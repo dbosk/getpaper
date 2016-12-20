@@ -1,0 +1,97 @@
+\section{Introduction}
+
+We want a script which filters out \acp{URL} from a text (e.g.\ an email) and 
+then fetches the corresponding papers.
+For instance, a \ac{URL} to a paper in arXiv\footnote{%
+  \ac{URL}: \url{https://arxiv.org/}
+} will automatically be converted to download the latest \ac{PDF} file.
+The currently supported archives are given in \cref{Donwloading}.
+
+We provide this functionality as a shell script.
+We want to be able to use it as a filter from Vim\footnote{%
+  \ac{URL}: \url{https://www.vim.org/}
+}; so we pipe the text to standard input, process it and outputs it back to 
+standard output --- without modifications.
+<<getpaper.sh>>=
+#!/bin/sh
+
+<<functions>>
+
+<<copy input to file and to stdout>>
+<<extract URLs from input>>
+<<process each URL>>
+@
+
+We can not process directly from standard input and simultaneously output the 
+unmodified text to standard output.
+What we do is to use tee(1) to output the text unmodified to both standard 
+output and to a temporary file, which we can later use for out processing.
+<<copy input to file and to stdout>>=
+tmpfile="$(mktemp)"
+tee "${tmpfile}"
+exec > /dev/null 3>2
+@ Note that we want to close standard output now that we are done, we want to 
+avoid accidentally outputting anything more.
+Remember that the output of this script is supposed to be a downloaded \ac{PDF}
+file.
+
+Next we filter out all \acp{URL} from the text.
+We store them as a space separated list in [[urls]].
+<<extract URLs from input>>=
+urls=$(grep -Eo "https?://[^ ]*" "${tmpfile}")
+@ Then we can process these \acp{URL}.
+<<process each URL>>=
+for url in ${urls}; do
+  download "${url}"
+done
+@ The [[download]] function (given below) will take correct action depending on
+which service the \ac{URL} goes to.
+
+\section{Downloading}
+\label{Downloading}
+
+Currently, the following preprint archives are supported:
+\begin{itemize}
+\item arXiv,
+\item Cryptology ePrint Archive, both \url{eprint.iacr.org} and \url{ia.cr}.
+\end{itemize}
+We determine which archive is used based on the \ac{URL}.
+Then we call the appropriate specialized download function.
+<<functions>>=
+download() {
+  URL="$1"
+  if ( echo "$URL" | grep -iE "(eprint.iacr.org/|ia.cr/)" ); then
+    download_iacr "$URL"
+  elif ( echo "$URL" | grep -i "arXiv.org" ); then
+    download_arXiv "$URL"
+  fi
+}
+@ The archive specific functions are treated in the following sections.
+
+\subsection{Cryptology ePrint Archive}
+
+<<functions>>=
+download_iacr() {
+  URL="$1"
+  <<get title from IACR>>
+  <<download the PDF from IACR>>
+}
+@
+
+<<download the PDF from IACR>>=
+curl -o "$TITLE.pdf" "$URL.pdf"
+@
+
+\subsection{arXiv}
+
+<<functions>>=
+download_arXiv() {
+  URL="$1"
+  <<get title from arXiv>>
+  <<download the PDF from arXiv>>
+}
+@
+
+<<download the PDF from arXiv>>=
+curl -o "$TITLE" "$(echo $URL | sed 's|/abs/|/pdf/|')"
+@

@@ -1,0 +1,30 @@
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[british]{babel}
+\usepackage{authblk}
+\usepackage[hyphens]{url}
+\usepackage{hyperref}
+\usepackage{cleveref}
+
+\usepackage[natbib,style=alphabetic,maxbibnames=99]{biblatex}
+\addbibresource{getpaper.bib}
+
+\usepackage{acro}
+\DeclareAcronym{URL}{%
+  short = {URL},
+  short-indefinite = {a},
+  long = {uniform resource location},
+  long-indefinite = {a},
+}
+\DeclareAcronym{PDF}{%
+  short = {PDF},
+  short-indefinite = {a},
+  long = {portable document format},
+  long-indefinite = {a},
+}
+
+\usepackage{noweb}
+% Needed to relax penalty for breaking code chunks across pages, otherwise 
+% there might be a lot of space following a code chunk.
+\def\nwendcode{\endtrivlist \endgroup}
+\let\nwdocspar=\smallbreak
